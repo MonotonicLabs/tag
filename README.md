@@ -2,8 +2,8 @@
 	  <img width="100" height="100" src="tag/Assets.xcassets/AppIcon.appiconset/AppIcon-256@2x.png" alt="Logo">
 	  <h1><b>Tag</b></h1>
 	  <p>Automatically tag your folders by Git status<br>
-	  <a href="#build--test"><strong>Get started »</strong></a><br><br>
-	  <a href="releases">Download for macOS</a><br>
+	  <a href="#how-it-works"><strong>Get started »</strong></a><br><br>
+	  <a href="https://github.com/MonotonicLabs/tag/releases">Download for macOS</a><br>
 	  <i>~ Compatible with macOS 15 and later. ~</i></p>
 	</div>
 
