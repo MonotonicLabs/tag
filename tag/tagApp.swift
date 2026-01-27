@@ -34,7 +34,6 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-@main
 struct tagApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let mode = AppMode.fromArguments(CommandLine.arguments)

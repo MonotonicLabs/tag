@@ -244,6 +244,60 @@ final class TaggerStore: ObservableObject {
     }
   }
 
+  func clearTagsAndCommentsForFolderAndTopLevelItems(in directoryPath: String) async {
+    lastErrorMessage = nil
+    let normalizedDirectoryPath = URL(fileURLWithPath: normalizeInputPath(directoryPath)).standardizedFileURL.path
+
+    do {
+      let summary = try await Task.detached(priority: .userInitiated) {
+        try FinderMetadataCleaner.clearTagsAndCommentsForFolderAndTopLevelItems(atPath: normalizedDirectoryPath)
+      }.value
+      resetUiStatusForClearedPath(normalizedDirectoryPath)
+      if !summary.errors.isEmpty {
+        lastErrorMessage =
+          "Cleared tags/comments for \(summary.clearedPaths) of \(summary.attemptedPaths) items. First error: \(summary.errors[0])"
+      }
+    } catch {
+      lastErrorMessage = String(describing: error)
+    }
+  }
+
+  private func resetUiStatusForClearedPath(_ clearedPath: String) {
+    var updatedResultsByRoot = resultsByRoot
+    var didChange = false
+
+    for (root, results) in resultsByRoot {
+      if root == clearedPath {
+        if !results.isEmpty {
+          updatedResultsByRoot[root] = [:]
+          didChange = true
+        }
+        continue
+      }
+
+      if pathIsAtOrUnderRoot(clearedPath, root: root) {
+        if updatedResultsByRoot[root]?.removeValue(forKey: clearedPath) != nil {
+          didChange = true
+        }
+      }
+    }
+
+    guard didChange else { return }
+
+    resultsByRoot = updatedResultsByRoot
+
+    var flattened: [String: FolderScanResult.Status] = [:]
+    for (_, results) in updatedResultsByRoot {
+      for (path, status) in results {
+        flattened[path] = status
+      }
+    }
+    folderResults = flattened
+
+    let validPaths = Set(flattened.keys)
+    folderOrigins = folderOrigins.filter { validPaths.contains($0.key) }
+  }
+
   // MARK: - Persistence
 
   private func loadScanHistoryFromDisk() {

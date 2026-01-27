@@ -11,17 +11,11 @@ on run argv
 end run
 """
 
-actor FinderCommentWriter {
-  private let runner: ProcessRunner
+enum FinderComment {
+  static let finderCommentAttr = "com.apple.metadata:kMDItemFinderComment"
 
-  init(runner: ProcessRunner) {
-    self.runner = runner
-  }
-
-  func setFinderComment(atPath path: String, comment: String) throws {
+  static func setFinderCommentUsingFinder(atPath path: String, comment: String, runner: ProcessRunner) throws {
     let normalized = comment.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !normalized.isEmpty else { return }
-
     let result = try runner.run(
       "osascript",
       ["-e", finderCommentAppleScript, "--", path, normalized],
@@ -37,5 +31,25 @@ actor FinderCommentWriter {
       )
     }
   }
+
+  static func clearFinderCommentXattr(atPath path: String) throws {
+    try Xattr.remove(name: finderCommentAttr, atPath: path)
+  }
+
+  static func clearFinderComment(atPath path: String, runner: ProcessRunner) throws {
+    try setFinderCommentUsingFinder(atPath: path, comment: "", runner: runner)
+    try clearFinderCommentXattr(atPath: path)
+  }
 }
 
+actor FinderCommentWriter {
+  private let runner: ProcessRunner
+
+  init(runner: ProcessRunner) {
+    self.runner = runner
+  }
+
+  func setFinderComment(atPath path: String, comment: String) throws {
+    try FinderComment.setFinderCommentUsingFinder(atPath: path, comment: comment, runner: runner)
+  }
+}
