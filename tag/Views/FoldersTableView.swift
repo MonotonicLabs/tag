@@ -7,6 +7,7 @@ struct FoldersTableView: View {
     @State private var selectedRoot: String? = nil  // nil = showing roots, non-nil = showing children
     @State private var lastClickTime: Date = .distantPast
     @State private var lastClickedPath: String?
+    @State private var clearMetadataDirectory: String?
 
     private var schedulerEnabled: Bool {
         store.schedulerInstalled && store.schedulerLoaded
@@ -98,6 +99,30 @@ struct FoldersTableView: View {
                 return .handled
             }
             return .ignored
+        }
+        .alert(
+            "Remove all tags and comments?",
+            isPresented: Binding(
+                get: { clearMetadataDirectory != nil },
+                set: { if !$0 { clearMetadataDirectory = nil } }
+            )
+        ) {
+            Button("Cancel", role: .cancel) {}
+            Button("Remove", role: .destructive) {
+                guard let directoryPath = clearMetadataDirectory else { return }
+                clearMetadataDirectory = nil
+                Task {
+                    await store.clearTagsAndCommentsForFolderAndTopLevelItems(in: directoryPath)
+                }
+            }
+        } message: {
+            if let directoryPath = clearMetadataDirectory {
+                Text(
+                    "This removes Finder tags and Finder comments from “\((directoryPath as NSString).lastPathComponent)” and all items directly inside it."
+                )
+            } else {
+                Text("This removes Finder tags and Finder comments from the folder and all items directly inside it.")
+            }
         }
     }
 
@@ -194,6 +219,12 @@ struct FoldersTableView: View {
 
                         Divider()
 
+                        Button("Remove All Tags and Comments", role: .destructive) {
+                            clearMetadataDirectory = row.path
+                        }
+
+                        Divider()
+
                         Button("Remove", role: .destructive) {
                             if let index = store.config.roots.firstIndex(of: row.path) {
                                 store.removeRoot(at: index)
@@ -266,6 +297,12 @@ struct FoldersTableView: View {
 
                                 Button("Open in Terminal") {
                                     openInTerminal(path: row.path)
+                                }
+
+                                Divider()
+
+                                Button("Remove All Tags and Comments", role: .destructive) {
+                                    clearMetadataDirectory = row.path
                                 }
 
                                 if let origin = row.origin {

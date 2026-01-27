@@ -6,6 +6,11 @@ enum FinderTagging {
 
   private static let finderLabelMask: UInt16 = 0x0e
 
+  static func clearAllTagsAndLabel(atPath path: String) throws {
+    try Xattr.remove(name: userTagsAttr, atPath: path)
+    try setFinderLabelIndex(atPath: path, colorIndex: 0)
+  }
+
   static func getFinderLabelIndex(atPath path: String) throws -> Int {
     guard let data = try Xattr.get(name: finderInfoAttr, atPath: path) else { return 0 }
     guard data.count == 32 else { return 0 }
@@ -72,4 +77,3 @@ enum FinderTagging {
     return true
   }
 }
-
