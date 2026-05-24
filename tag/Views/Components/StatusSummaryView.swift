@@ -19,6 +19,9 @@ struct StatusSummaryView: View {
                 if summary.noGit > 0 {
                     StatusCount(count: summary.noGit, icon: "folder.fill", color: .red)
                 }
+                if summary.multipleGitRepos > 0 {
+                    StatusCount(count: summary.multipleGitRepos, icon: "folder.fill", color: .purple)
+                }
             }
         } else {
             Text("Not scanned")
@@ -52,7 +55,8 @@ private struct StatusCount: View {
             localChanges: 2,
             localOnly: 1,
             noGit: 0,
-            total: 8
+            multipleGitRepos: 1,
+            total: 9
         ))
 
         StatusSummaryView(summary: RootStatusSummary(

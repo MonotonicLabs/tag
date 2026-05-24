@@ -7,6 +7,7 @@ struct RootStatusSummary {
   var localChanges: Int = 0
   var localOnly: Int = 0
   var noGit: Int = 0
+  var multipleGitRepos: Int = 0
   var files: Int = 0
   var errors: Int = 0
   var total: Int = 0
@@ -127,6 +128,7 @@ final class TaggerStore: ObservableObject {
     for root in normalizedRoots {
       newResultsByRoot[root] = [:]
     }
+    var newFolderOrigins: [String: String] = [:]
 
     let concurrency = config.concurrency ?? Tagger.defaultConcurrency()
     let tagger = Tagger(config: config)
@@ -142,6 +144,9 @@ final class TaggerStore: ObservableObject {
         self.folderResults[result.path] = result.status
         if let origin = result.origin {
           self.folderOrigins[result.path] = origin
+          newFolderOrigins[result.path] = origin
+        } else {
+          self.folderOrigins.removeValue(forKey: result.path)
         }
 
         // Find which root this result belongs to
@@ -157,6 +162,14 @@ final class TaggerStore: ObservableObject {
 
     // Final update
     resultsByRoot = newResultsByRoot
+    var flattenedResults: [String: FolderScanResult.Status] = [:]
+    for (_, results) in newResultsByRoot {
+      for (path, status) in results {
+        flattenedResults[path] = status
+      }
+    }
+    folderResults = flattenedResults
+    folderOrigins = newFolderOrigins
 
     lastRunLines = summary.lines
     lastRunErrors = summary.errors
@@ -371,6 +384,7 @@ final class TaggerStore: ObservableObject {
       case .localChanges: summary.localChanges += 1
       case .localOnly: summary.localOnly += 1
       case .noGit: summary.noGit += 1
+      case .multipleGitRepos: summary.multipleGitRepos += 1
       case .file: summary.files += 1
       case .error: summary.errors += 1
       }

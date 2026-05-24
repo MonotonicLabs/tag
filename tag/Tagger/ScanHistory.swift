@@ -11,6 +11,7 @@ struct PersistedFolderStatus: Codable, Hashable, Sendable {
     case localChanges
     case localOnly
     case noGit
+    case multipleGitRepos
     case file
     case error
   }
@@ -33,6 +34,8 @@ struct PersistedFolderStatus: Codable, Hashable, Sendable {
       self.init(kind: .localOnly)
     case .noGit:
       self.init(kind: .noGit)
+    case .multipleGitRepos:
+      self.init(kind: .multipleGitRepos)
     case .file:
       self.init(kind: .file)
     case let .error(message):
@@ -50,6 +53,8 @@ struct PersistedFolderStatus: Codable, Hashable, Sendable {
       return .localOnly
     case .noGit:
       return .noGit
+    case .multipleGitRepos:
+      return .multipleGitRepos
     case .file:
       return .file
     case .error:
@@ -121,4 +126,3 @@ enum ScanHistoryStore {
     return decoder
   }
 }
-
