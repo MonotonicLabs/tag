@@ -1,8 +1,9 @@
 import Foundation
 
-enum EntryKind: Sendable {
+enum EntryKind: Sendable, Equatable {
   case dir
   case file
+  case gitRepoGroup
 }
 
 struct EntryTask: Sendable {
@@ -29,11 +30,12 @@ struct ScanProgress: Sendable {
 }
 
 struct FolderScanResult: Sendable {
-  enum Status: Sendable {
+  enum Status: Sendable, Equatable {
     case synced
     case localChanges
     case localOnly
     case noGit
+    case multipleGitRepos
     case file
     case error(String)
   }
@@ -74,7 +76,7 @@ struct Tagger: Sendable {
 
       let entries: [String]
       do {
-        entries = try FileManager.default.contentsOfDirectory(atPath: root)
+        entries = try FileManager.default.contentsOfDirectory(atPath: root).sorted()
       } catch {
         errors.append("Failed to list \(root): \(error.localizedDescription)")
         continue
@@ -85,8 +87,33 @@ struct Tagger: Sendable {
         var entryIsDir = ObjCBool(false)
         guard FileManager.default.fileExists(atPath: fullPath, isDirectory: &entryIsDir) else { continue }
         let kind: EntryKind = entryIsDir.boolValue ? .dir : .file
-        let displayPath = multiRoot ? fullPath : name
-        tasks.append(EntryTask(name: name, fullPath: fullPath, displayPath: displayPath, kind: kind))
+        let task = makeTask(name: name, fullPath: fullPath, root: root, multiRoot: multiRoot, kind: kind)
+
+        guard case .dir = kind, !Git.isRepo(atPath: fullPath) else {
+          tasks.append(task)
+          continue
+        }
+
+        do {
+          let childTasks = try childDirectoryTasks(in: fullPath, root: root, multiRoot: multiRoot)
+          if childTasks.isEmpty {
+            tasks.append(task)
+            continue
+          }
+
+          let containsGitRepo = childTasks.contains { Git.isRepo(atPath: $0.fullPath) }
+          if containsGitRepo {
+            tasks.append(
+              makeTask(name: name, fullPath: fullPath, root: root, multiRoot: multiRoot, kind: .gitRepoGroup)
+            )
+            tasks.append(contentsOf: childTasks)
+          } else {
+            tasks.append(task)
+          }
+        } catch {
+          errors.append("Failed to list \(fullPath): \(error.localizedDescription)")
+          tasks.append(task)
+        }
       }
     }
 
@@ -109,7 +136,7 @@ struct Tagger: Sendable {
 
     let tasks = collected.tasks
     if tasks.isEmpty {
-      return TagRunSummary(lines: [], errors: errors)
+      return TagRunSummary(lines: lines.sorted(), errors: errors.sorted())
     }
 
     let total = tasks.count
@@ -169,6 +196,43 @@ struct Tagger: Sendable {
     return TagRunSummary(lines: lines.sorted(), errors: errors.sorted())
   }
 
+  private func makeTask(name: String, fullPath: String, root: String, multiRoot: Bool, kind: EntryKind) -> EntryTask {
+    EntryTask(
+      name: name,
+      fullPath: fullPath,
+      displayPath: displayPath(for: fullPath, root: root, multiRoot: multiRoot),
+      kind: kind
+    )
+  }
+
+  private func displayPath(for fullPath: String, root: String, multiRoot: Bool) -> String {
+    if multiRoot {
+      return fullPath
+    }
+
+    let normalizedRoot = URL(fileURLWithPath: root).standardizedFileURL.path
+    let normalizedPath = URL(fileURLWithPath: fullPath).standardizedFileURL.path
+    let rootPrefix = normalizedRoot.hasSuffix("/") ? normalizedRoot : "\(normalizedRoot)/"
+
+    if normalizedPath.hasPrefix(rootPrefix) {
+      return String(normalizedPath.dropFirst(rootPrefix.count))
+    }
+
+    return (fullPath as NSString).lastPathComponent
+  }
+
+  private func childDirectoryTasks(in parentPath: String, root: String, multiRoot: Bool) throws -> [EntryTask] {
+    let childNames = try FileManager.default.contentsOfDirectory(atPath: parentPath).sorted()
+    return childNames.compactMap { childName in
+      let childPath = (parentPath as NSString).appendingPathComponent(childName)
+      var childIsDir = ObjCBool(false)
+      guard FileManager.default.fileExists(atPath: childPath, isDirectory: &childIsDir), childIsDir.boolValue else {
+        return nil
+      }
+      return makeTask(name: childName, fullPath: childPath, root: root, multiRoot: multiRoot, kind: .dir)
+    }
+  }
+
   private func processEntryWithResult(_ task: EntryTask) async throws -> (String, FolderScanResult) {
     let (line, status, origin) = try await processEntryInternal(task)
     let result = FolderScanResult(path: task.fullPath, status: status, message: line, origin: origin)
@@ -189,6 +253,13 @@ struct Tagger: Sendable {
       }
       _ = try await FinderTagging.setOrderedUserTags(atPath: task.fullPath, tags: [tag])
       return ("Tagged \(task.displayPath): \(tag.name)", .file, nil)
+    case .gitRepoGroup:
+      let tag = config.tags.multipleGitRepos
+      if !tag.enabled {
+        return ("Skipped tagging \(task.displayPath): \(tag.name) disabled", .multipleGitRepos, nil)
+      }
+      _ = try await FinderTagging.setOrderedUserTags(atPath: task.fullPath, tags: [tag])
+      return ("Tagged \(task.displayPath): \(tag.name)", .multipleGitRepos, nil)
     case .dir:
       break
     }

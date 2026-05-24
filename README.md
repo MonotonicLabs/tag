@@ -25,9 +25,11 @@
 <br>
 
 ## How it works
-You select one or more “root” folders (for example `~/projects`). Tag scans each *direct child* folder and:
+You select one or more “root” folders (for example `~/projects`). Tag scans each direct child folder. When a non-repo child contains immediate child Git repositories, Tag marks the parent as “Multiple Git Repos” and scans those immediate children too.
 
-- Detects whether it’s a Git repo
+For scanned folders, it:
+
+- Detects whether the folder is a Git repo
 - Checks for uncommitted changes and unpushed commits
 - Applies a configurable Finder tag (name + color)
 - Optionally writes `owner/repo` as the Finder comment (requires macOS Automation permission for Finder)

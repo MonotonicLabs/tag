@@ -387,6 +387,7 @@ struct ChildFolderRow: Identifiable {
         case .localChanges: self.folderStatus = .localChanges
         case .localOnly: self.folderStatus = .localOnly
         case .noGit: self.folderStatus = .noGit
+        case .multipleGitRepos: self.folderStatus = .multipleGitRepos
         case .file, .error: self.folderStatus = .pending
         }
     }

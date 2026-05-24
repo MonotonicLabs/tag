@@ -5,6 +5,7 @@ enum FolderStatus: String, CaseIterable {
     case localChanges
     case localOnly
     case noGit
+    case multipleGitRepos
     case pending
     case scanning
 
@@ -14,6 +15,7 @@ enum FolderStatus: String, CaseIterable {
         case .localChanges: return "Changes"
         case .localOnly: return "Local Git"
         case .noGit: return "No Git"
+        case .multipleGitRepos: return "Multi Repo"
         case .pending: return "Pending"
         case .scanning: return "Scanning"
         }
@@ -25,6 +27,7 @@ enum FolderStatus: String, CaseIterable {
         case .localChanges: return .orange
         case .localOnly: return .gray
         case .noGit: return .red
+        case .multipleGitRepos: return .purple
         case .pending: return .secondary
         case .scanning: return .blue
         }
@@ -36,6 +39,7 @@ enum FolderStatus: String, CaseIterable {
         case .localChanges: return "exclamationmark.circle.fill"
         case .localOnly: return "arrow.triangle.branch"
         case .noGit: return "folder.fill"
+        case .multipleGitRepos: return "folder.fill"
         case .pending: return "clock"
         case .scanning: return "arrow.clockwise"
         }

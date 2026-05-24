@@ -31,6 +31,12 @@ struct TagsSettingsView: View {
                 )
 
                 TagSettingRow(
+                    title: "Multiple Git Repos",
+                    description: "Folder groups multiple child repositories",
+                    tag: $store.config.tags.multipleGitRepos
+                )
+
+                TagSettingRow(
                     title: "Unexpected File",
                     description: "Item is a file instead of a folder (usually disabled)",
                     tag: $store.config.tags.unexpectedFile
